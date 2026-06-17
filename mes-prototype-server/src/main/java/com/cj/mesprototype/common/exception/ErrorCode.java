@@ -30,6 +30,13 @@ public enum ErrorCode {
     MENU_NOT_FOUND(HttpStatus.NOT_FOUND, "MENU_001", "메뉴를 찾을 수 없습니다."),
     MENU_CODE_DUPLICATE(HttpStatus.CONFLICT, "MENU_002", "이미 존재하는 메뉴 코드입니다."),
     MENU_PARENT_NOT_FOUND(HttpStatus.NOT_FOUND, "MENU_003", "부모 메뉴를 찾을 수 없습니다."),
+    ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM_001", "품목을 찾을 수 없습니다."),
+    ITEM_CODE_DUPLICATE(HttpStatus.CONFLICT, "BOM_002", "이미 존재하는 품목 코드입니다."),
+    BOM_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM_003", "BOM을 찾을 수 없습니다."),
+    BOM_PRODUCT_DUPLICATE(HttpStatus.CONFLICT, "BOM_004", "이미 활성 BOM이 등록된 생산 품목입니다."),
+    BOM_LINE_EMPTY(HttpStatus.BAD_REQUEST, "BOM_005", "BOM 자재 라인은 최소 1개 이상이어야 합니다."),
+    INVENTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM_006", "재고 정보를 찾을 수 없습니다."),
+    BOM_CODE_DUPLICATE(HttpStatus.CONFLICT, "BOM_007", "이미 존재하는 BOM 코드입니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;

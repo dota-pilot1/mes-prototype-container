@@ -1,0 +1,48 @@
+erDiagram
+    ITEMS ||--|{ BOMS : "제품 품목"
+    BOMS ||--|{ BOM_LINES : "자재 구성"
+    ITEMS ||--|{ BOM_LINES : "자재 품목"
+    ITEMS ||--o| INVENTORIES : "재고"
+
+    ITEMS {
+        bigint id PK
+        varchar item_code UK
+        varchar item_name
+        varchar item_type
+        varchar unit
+        numeric safety_stock
+        varchar description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    BOMS {
+        bigint id PK
+        varchar bom_code UK
+        varchar bom_name
+        bigint product_item_id FK
+        varchar version
+        varchar status
+        varchar description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    BOM_LINES {
+        bigint id PK
+        bigint bom_id FK
+        bigint material_item_id FK
+        numeric required_qty
+        numeric loss_rate
+        varchar description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    INVENTORIES {
+        bigint id PK
+        bigint item_id FK
+        numeric on_hand_qty
+        numeric reserved_qty
+        timestamptz updated_at
+    }
