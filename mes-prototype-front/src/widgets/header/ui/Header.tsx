@@ -85,10 +85,9 @@ function AdminMegaMenu({ item }: { item: MenuItem }) {
   const pathname = usePathname();
   const leaves = flattenLeaves(item);
   const isActive = leaves.some((leaf) => leaf.path && pathname.startsWith(leaf.path));
-  const groups =
-    item.children.some((child) => child.children.length > 0)
-      ? item.children
-      : [{ ...item, id: -1, label: "관리", children: item.children }];
+  const children = item.children.flatMap((child) =>
+    child.children.length > 0 ? child.children : [child]
+  ).filter((child) => child.path || child.children.length > 0);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -115,72 +114,44 @@ function AdminMegaMenu({ item }: { item: MenuItem }) {
       </button>
 
       {open && (
-        <div className="absolute left-1/2 top-full z-50 mt-2 w-[760px] -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-background shadow-xl">
-          <div className="grid grid-cols-[240px_1fr]">
-            <aside className="border-r border-border bg-muted/45 p-5">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Admin
-              </p>
-              <h3 className="mt-2 text-xl font-bold tracking-tight">관리 센터</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                권한별 관리 메뉴를 한 곳에서 빠르게 이동합니다.
-              </p>
-              <Link
-                href="/dashboard"
-                onClick={() => setOpen(false)}
-                className="mt-5 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                대시보드
-              </Link>
-            </aside>
+        <div className="absolute left-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-[min(360px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-border bg-background p-2 shadow-xl">
+          <div className="border-b border-border px-2 py-2">
+            <p className="text-sm font-bold tracking-tight">관리</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              필요한 관리 화면으로 이동합니다.
+            </p>
+          </div>
+          <div className="mt-2 space-y-1">
+            {children.map((child) => {
+              const meta = adminMenuMeta[child.code] ?? {
+                description: "관리 기능으로 이동합니다.",
+                icon: Settings,
+              };
+              const Icon = meta.icon;
 
-            <section className="grid grid-cols-2 gap-3 bg-background p-4">
-              {groups.map((group) => {
-                const children = group.children.filter((child) => child.path || child.children.length > 0);
-                if (children.length === 0) return null;
-
-                return (
-                  <div key={group.id} className="rounded-lg border border-border bg-muted/20 p-3">
-                    <h4 className="text-sm font-bold tracking-tight">{group.label}</h4>
-                    <div className="mt-3 space-y-1.5">
-                      {children.flatMap((child) =>
-                        child.children.length > 0 ? child.children : [child]
-                      ).map((child) => {
-                        const meta = adminMenuMeta[child.code] ?? {
-                          description: "관리 기능으로 이동합니다.",
-                          icon: Settings,
-                        };
-                        const Icon = meta.icon;
-
-                        return (
-                          <Link
-                            key={child.id}
-                            href={child.path ?? "#"}
-                            target={child.isExternal ? "_blank" : undefined}
-                            rel={child.isExternal ? "noopener noreferrer" : undefined}
-                            onClick={() => setOpen(false)}
-                            className="group flex gap-3 rounded-md border border-transparent bg-background p-2.5 transition-colors hover:border-primary hover:bg-accent"
-                          >
-                            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
-                              <Icon className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-foreground">
-                                {child.label}
-                              </span>
-                              <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-muted-foreground">
-                                {meta.description}
-                              </span>
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
+              return (
+                <Link
+                  key={child.id}
+                  href={child.path ?? "#"}
+                  target={child.isExternal ? "_blank" : undefined}
+                  rel={child.isExternal ? "noopener noreferrer" : undefined}
+                  onClick={() => setOpen(false)}
+                  className="group flex gap-3 rounded-md p-2.5 transition-colors hover:bg-accent"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-foreground">
+                      {child.label}
+                    </span>
+                    <span className="mt-0.5 line-clamp-1 block text-xs leading-5 text-muted-foreground">
+                      {meta.description}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
