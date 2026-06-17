@@ -1,0 +1,37 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Local agent/worktree state
+.claude/
+.claire/
+
+# Env / local overrides
+.env
+.env.*
+!.env.example
+*.env
+mes-prototype-front/.env*
+mes-prototype-server/.env
+mes-prototype-server/src/main/resources/application-local.yaml
+
+# Frontend generated files
+mes-prototype-front/node_modules/
+mes-prototype-front/.next/
+mes-prototype-front/out/
+mes-prototype-front/build/
+mes-prototype-front/dist/
+mes-prototype-front/.vite/
+mes-prototype-front/coverage/
+mes-prototype-front/*.tsbuildinfo
+
+# Backend generated files
+mes-prototype-server/.gradle/
+mes-prototype-server/build/
+mes-prototype-server/out/
+mes-prototype-server/bin/
+!mes-prototype-server/gradle/wrapper/gradle-wrapper.jar

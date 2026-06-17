@@ -1,0 +1,15 @@
+export const common = {
+  brand: "MES Prototype",
+  tagline: "MES prototype management platform.",
+  description: "Appointment, customer, and staff scheduling features are coming soon.",
+  loading: "Loading...",
+  confirm: "Confirm",
+  cancel: "Cancel",
+  save: "Save",
+  delete: "Delete",
+  edit: "Edit",
+  close: "Close",
+  search: "Search",
+  language: "Language",
+  theme: "Theme",
+};
