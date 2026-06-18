@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardList,
   HelpCircle,
@@ -10,50 +11,26 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { toast } from "@/shared/lib/toast";
+import {
+  addDays,
+  sourcePlans,
+  toDateInput,
+} from "@/entities/work-order/model/mock";
+import {
+  splitWorkOrders,
+  workOrderApi,
+} from "@/entities/work-order/api/workOrderApi";
+import type {
+  ProcessStatus,
+  UpdateWorkOrderBody,
+  WorkOrder,
+  WorkOrderProcess,
+  WorkOrderProcessBody,
+  WorkOrderStatus,
+} from "@/entities/work-order/model/types";
+import { toast, toastError } from "@/shared/lib/toast";
 import { InfoDialog } from "@/shared/ui/InfoDialog";
 import { Select } from "@/shared/ui/Select";
-
-type WorkOrderStatus = "READY" | "IN_PROGRESS" | "COMPLETED" | "HOLD";
-type ProcessStatus = WorkOrderStatus;
-
-type SourcePlan = {
-  id: number;
-  code: string;
-  itemCode: string;
-  itemName: string;
-  quantity: number;
-  startDate: string;
-  endDate: string;
-};
-
-type WorkOrder = {
-  id: number;
-  code: string;
-  planCode: string;
-  itemCode: string;
-  itemName: string;
-  quantity: number;
-  startDate: string;
-  dueDate: string;
-  workstation: string;
-  assignee: string;
-  status: WorkOrderStatus;
-};
-
-type WorkOrderProcess = {
-  id: number;
-  orderId: number;
-  sequence: number;
-  processCode: string;
-  processName: string;
-  workstation: string;
-  assignee: string;
-  startDate: string;
-  dueDate: string;
-  progress: number;
-  status: ProcessStatus;
-};
 
 type FormState = {
   planId: string;
@@ -77,185 +54,6 @@ type ProcessFormState = {
 
 const today = new Date();
 
-const sourcePlans: SourcePlan[] = [
-  {
-    id: 1,
-    code: "PP-001",
-    itemCode: "ITM-001",
-    itemName: "의자",
-    quantity: 200,
-    startDate: toDateInput(addDays(today, 1)),
-    endDate: toDateInput(addDays(today, 4)),
-  },
-  {
-    id: 2,
-    code: "PP-002",
-    itemCode: "ITM-002",
-    itemName: "책상",
-    quantity: 120,
-    startDate: toDateInput(addDays(today, 3)),
-    endDate: toDateInput(addDays(today, 8)),
-  },
-  {
-    id: 3,
-    code: "PP-003",
-    itemCode: "ITM-001",
-    itemName: "의자",
-    quantity: 80,
-    startDate: toDateInput(addDays(today, 9)),
-    endDate: toDateInput(addDays(today, 11)),
-  },
-];
-
-const initialOrders: WorkOrder[] = [
-  {
-    id: 1,
-    code: "WO-001",
-    planCode: "PP-001",
-    itemCode: "ITM-001",
-    itemName: "의자",
-    quantity: 200,
-    startDate: toDateInput(addDays(today, 1)),
-    dueDate: toDateInput(addDays(today, 4)),
-    workstation: "조립 1라인",
-    assignee: "김작업",
-    status: "READY",
-  },
-  {
-    id: 2,
-    code: "WO-002",
-    planCode: "PP-002",
-    itemCode: "ITM-002",
-    itemName: "책상",
-    quantity: 120,
-    startDate: toDateInput(addDays(today, 3)),
-    dueDate: toDateInput(addDays(today, 8)),
-    workstation: "조립 2라인",
-    assignee: "박작업",
-    status: "IN_PROGRESS",
-  },
-  {
-    id: 3,
-    code: "WO-003",
-    planCode: "PP-003",
-    itemCode: "ITM-001",
-    itemName: "의자",
-    quantity: 80,
-    startDate: toDateInput(addDays(today, 9)),
-    dueDate: toDateInput(addDays(today, 11)),
-    workstation: "조립 1라인",
-    assignee: "이작업",
-    status: "HOLD",
-  },
-];
-
-const initialProcesses: WorkOrderProcess[] = [
-  {
-    id: 1,
-    orderId: 1,
-    sequence: 1,
-    processCode: "PROC-001",
-    processName: "자재 준비",
-    workstation: "자재 창고",
-    assignee: "김작업",
-    startDate: toDateInput(addDays(today, 1)),
-    dueDate: toDateInput(addDays(today, 1)),
-    progress: 100,
-    status: "COMPLETED",
-  },
-  {
-    id: 2,
-    orderId: 1,
-    sequence: 2,
-    processCode: "PROC-002",
-    processName: "조립",
-    workstation: "조립 1라인",
-    assignee: "김작업",
-    startDate: toDateInput(addDays(today, 2)),
-    dueDate: toDateInput(addDays(today, 3)),
-    progress: 60,
-    status: "IN_PROGRESS",
-  },
-  {
-    id: 3,
-    orderId: 1,
-    sequence: 3,
-    processCode: "PROC-003",
-    processName: "검사",
-    workstation: "검사실",
-    assignee: "최검사",
-    startDate: toDateInput(addDays(today, 4)),
-    dueDate: toDateInput(addDays(today, 4)),
-    progress: 0,
-    status: "READY",
-  },
-  {
-    id: 4,
-    orderId: 2,
-    sequence: 1,
-    processCode: "PROC-004",
-    processName: "자재 준비",
-    workstation: "자재 창고",
-    assignee: "박작업",
-    startDate: toDateInput(addDays(today, 3)),
-    dueDate: toDateInput(addDays(today, 3)),
-    progress: 100,
-    status: "COMPLETED",
-  },
-  {
-    id: 5,
-    orderId: 2,
-    sequence: 2,
-    processCode: "PROC-005",
-    processName: "상판 조립",
-    workstation: "조립 2라인",
-    assignee: "박작업",
-    startDate: toDateInput(addDays(today, 4)),
-    dueDate: toDateInput(addDays(today, 6)),
-    progress: 45,
-    status: "IN_PROGRESS",
-  },
-  {
-    id: 6,
-    orderId: 2,
-    sequence: 3,
-    processCode: "PROC-006",
-    processName: "검사",
-    workstation: "검사실",
-    assignee: "최검사",
-    startDate: toDateInput(addDays(today, 7)),
-    dueDate: toDateInput(addDays(today, 8)),
-    progress: 0,
-    status: "READY",
-  },
-  {
-    id: 7,
-    orderId: 3,
-    sequence: 1,
-    processCode: "PROC-007",
-    processName: "자재 대기",
-    workstation: "자재 창고",
-    assignee: "이작업",
-    startDate: toDateInput(addDays(today, 9)),
-    dueDate: toDateInput(addDays(today, 9)),
-    progress: 0,
-    status: "HOLD",
-  },
-  {
-    id: 8,
-    orderId: 3,
-    sequence: 2,
-    processCode: "PROC-008",
-    processName: "조립",
-    workstation: "조립 1라인",
-    assignee: "이작업",
-    startDate: toDateInput(addDays(today, 10)),
-    dueDate: toDateInput(addDays(today, 11)),
-    progress: 0,
-    status: "READY",
-  },
-];
-
 const emptyForm: FormState = {
   planId: "",
   quantity: "100",
@@ -277,16 +75,103 @@ const emptyProcessForm: ProcessFormState = {
 };
 
 export function WorkOrderManagement() {
-  const [orders, setOrders] = useState<WorkOrder[]>(initialOrders);
-  const [processes, setProcesses] = useState<WorkOrderProcess[]>(initialProcesses);
+  const queryClient = useQueryClient();
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ["work-orders"],
+    queryFn: workOrderApi.list,
+  });
+  const { orders, processes } = useMemo(
+    () => splitWorkOrders(workOrders),
+    [workOrders]
+  );
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [processForm, setProcessForm] = useState<ProcessFormState>(emptyProcessForm);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [editingProcessId, setEditingProcessId] = useState<number | null>(null);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(initialOrders[0]?.id ?? null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [orderFormOpen, setOrderFormOpen] = useState(false);
   const [processFormOpen, setProcessFormOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["work-orders"] });
+
+  const createOrderMutation = useMutation({
+    mutationFn: workOrderApi.create,
+    onSuccess: (created) => {
+      invalidate();
+      setSelectedOrderId(created.id);
+    },
+    onError: (e) => toastError(e, "작업지시 저장에 실패했습니다."),
+  });
+  const updateOrderMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateWorkOrderBody }) =>
+      workOrderApi.update(id, body),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "작업지시 수정에 실패했습니다."),
+  });
+  const deleteOrderMutation = useMutation({
+    mutationFn: (id: number) => workOrderApi.remove(id),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "작업지시 삭제에 실패했습니다."),
+  });
+  const addProcessMutation = useMutation({
+    mutationFn: ({ orderId, body }: { orderId: number; body: WorkOrderProcessBody }) =>
+      workOrderApi.addProcess(orderId, body),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "공정 추가에 실패했습니다."),
+  });
+  const updateProcessMutation = useMutation({
+    mutationFn: ({
+      orderId,
+      processId,
+      body,
+    }: {
+      orderId: number;
+      processId: number;
+      body: WorkOrderProcessBody;
+    }) => workOrderApi.updateProcess(orderId, processId, body),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "공정 수정에 실패했습니다."),
+  });
+  const removeProcessMutation = useMutation({
+    mutationFn: ({ orderId, processId }: { orderId: number; processId: number }) =>
+      workOrderApi.removeProcess(orderId, processId),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "공정 삭제에 실패했습니다."),
+  });
+
+  const toOrderBody = (
+    order: WorkOrder,
+    status?: WorkOrderStatus
+  ): UpdateWorkOrderBody => ({
+    planCode: order.planCode,
+    itemCode: order.itemCode,
+    itemName: order.itemName,
+    quantity: order.quantity,
+    startDate: order.startDate,
+    dueDate: order.dueDate,
+    workstation: order.workstation,
+    assignee: order.assignee,
+    status: status ?? order.status,
+  });
+
+  const toProcessBody = (
+    process: WorkOrderProcess,
+    patch?: Partial<WorkOrderProcessBody>
+  ): WorkOrderProcessBody => ({
+    sequence: process.sequence,
+    processCode: process.processCode,
+    processName: process.processName,
+    workstation: process.workstation,
+    assignee: process.assignee,
+    startDate: process.startDate,
+    dueDate: process.dueDate,
+    progress: process.progress,
+    status: process.status,
+    ...patch,
+  });
 
   const selectedPlan = sourcePlans.find((plan) => String(plan.id) === form.planId) ?? null;
   const readyCount = orders.filter((order) => order.status === "READY").length;
@@ -358,21 +243,23 @@ export function WorkOrderManagement() {
 
   const deleteOrder = (orderId: number) => {
     const nextSelectedOrder = orders.find((order) => order.id !== orderId) ?? null;
-    setOrders((value) => value.filter((order) => order.id !== orderId));
-    setProcesses((value) => value.filter((process) => process.orderId !== orderId));
-    if (editingOrderId === orderId) resetForm();
-    if (selectedOrderId === orderId) {
-      setSelectedOrderId(nextSelectedOrder?.id ?? null);
-      setEditingProcessId(null);
-      setProcessFormOpen(false);
-    }
-    toast.success("작업지시가 삭제되었습니다.");
+    deleteOrderMutation.mutate(orderId, {
+      onSuccess: () => {
+        if (editingOrderId === orderId) resetForm();
+        if (selectedOrderId === orderId) {
+          setSelectedOrderId(nextSelectedOrder?.id ?? null);
+          setEditingProcessId(null);
+          setProcessFormOpen(false);
+        }
+        toast.success("작업지시가 삭제되었습니다.");
+      },
+    });
   };
 
   const setOrderStatus = (orderId: number, status: WorkOrderStatus) => {
-    setOrders((value) =>
-      value.map((order) => (order.id === orderId ? { ...order, status } : order))
-    );
+    const order = orders.find((value) => value.id === orderId);
+    if (!order) return;
+    updateOrderMutation.mutate({ id: orderId, body: toOrderBody(order, status) });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -407,43 +294,38 @@ export function WorkOrderManagement() {
     };
 
     if (editingOrderId) {
-      setOrders((value) =>
-        value.map((order) =>
-          order.id === editingOrderId ? { ...order, ...nextOrder } : order
-        )
+      updateOrderMutation.mutate(
+        { id: editingOrderId, body: nextOrder },
+        {
+          onSuccess: () => {
+            resetForm();
+            setOrderFormOpen(false);
+            toast.success("작업지시가 수정되었습니다.");
+          },
+        }
       );
-      resetForm();
-      setOrderFormOpen(false);
-      toast.success("작업지시가 수정되었습니다.");
       return;
     }
 
-    const id = Math.max(0, ...orders.map((order) => order.id)) + 1;
-    const createdOrder = {
-      id,
-      code: `WO-${String(id).padStart(3, "0")}`,
-      ...nextOrder,
-    };
-    setOrders((value) => [
-      createdOrder,
-      ...value,
-    ]);
-    setProcesses((value) => [
-      ...value,
-      ...makeDefaultProcesses({
-        orderId: id,
-        startDate: createdOrder.startDate,
-        dueDate: createdOrder.dueDate,
-        workstation: createdOrder.workstation,
-        assignee: createdOrder.assignee,
-        nextProcessId: Math.max(0, ...value.map((process) => process.id)) + 1,
-      }),
-    ]);
-    setSelectedOrderId(id);
-    setProcessFormOpen(false);
-    resetForm();
-    setOrderFormOpen(false);
-    toast.success("작업지시가 생성되었습니다.");
+    const nextNumber =
+      Math.max(
+        0,
+        ...orders.map((order) => Number(order.code.replace(/\D/g, "")) || 0)
+      ) + 1;
+    const code = `WO-${String(nextNumber).padStart(3, "0")}`;
+
+    // 공정을 지정하지 않으면 백엔드가 기본 공정(자재 출고 → 조립 → 검사/포장)을 생성합니다.
+    createOrderMutation.mutate(
+      { code, ...nextOrder },
+      {
+        onSuccess: () => {
+          setProcessFormOpen(false);
+          resetForm();
+          setOrderFormOpen(false);
+          toast.success("작업지시가 생성되었습니다.");
+        },
+      }
+    );
   };
 
   const editProcess = (process: WorkOrderProcess) => {
@@ -461,31 +343,36 @@ export function WorkOrderManagement() {
   };
 
   const deleteProcess = (processId: number) => {
-    setProcesses((value) => value.filter((process) => process.id !== processId));
-    if (editingProcessId === processId) {
-      resetProcessForm();
-      setProcessFormOpen(false);
-    }
-    toast.success("공정이 삭제되었습니다.");
+    const process = processes.find((value) => value.id === processId);
+    if (!process) return;
+    removeProcessMutation.mutate(
+      { orderId: process.orderId, processId },
+      {
+        onSuccess: () => {
+          if (editingProcessId === processId) {
+            resetProcessForm();
+            setProcessFormOpen(false);
+          }
+          toast.success("공정이 삭제되었습니다.");
+        },
+      }
+    );
   };
 
   const setProcessStatus = (processId: number, status: ProcessStatus) => {
-    setProcesses((value) =>
-      value.map((process) =>
-        process.id === processId
-          ? {
-              ...process,
-              status,
-              progress:
-                status === "COMPLETED"
-                  ? 100
-                  : status === "READY" || status === "HOLD"
-                    ? 0
-                    : process.progress,
-            }
-          : process
-      )
-    );
+    const process = processes.find((value) => value.id === processId);
+    if (!process) return;
+    const progress =
+      status === "COMPLETED"
+        ? 100
+        : status === "READY" || status === "HOLD"
+          ? 0
+          : process.progress;
+    updateProcessMutation.mutate({
+      orderId: process.orderId,
+      processId,
+      body: toProcessBody(process, { status, progress }),
+    });
   };
 
   const submitProcess = (e: React.FormEvent) => {
@@ -510,50 +397,44 @@ export function WorkOrderManagement() {
       return;
     }
 
+    const processBody: WorkOrderProcessBody = {
+      processName: processForm.processName.trim(),
+      workstation: processForm.workstation.trim() || "미지정",
+      assignee: processForm.assignee.trim() || "미지정",
+      startDate: processForm.startDate,
+      dueDate: processForm.dueDate,
+      progress,
+      status: processForm.status,
+    };
+
     if (editingProcessId) {
-      setProcesses((value) =>
-        value.map((process) =>
-          process.id === editingProcessId
-            ? {
-                ...process,
-                processName: processForm.processName.trim(),
-                workstation: processForm.workstation.trim() || "미지정",
-                assignee: processForm.assignee.trim() || "미지정",
-                startDate: processForm.startDate,
-                dueDate: processForm.dueDate,
-                progress,
-                status: processForm.status,
-              }
-            : process
-        )
+      updateProcessMutation.mutate(
+        {
+          orderId: selectedOrder.id,
+          processId: editingProcessId,
+          body: processBody,
+        },
+        {
+          onSuccess: () => {
+            resetProcessForm();
+            setProcessFormOpen(false);
+            toast.success("공정이 수정되었습니다.");
+          },
+        }
       );
-      resetProcessForm();
-      setProcessFormOpen(false);
-      toast.success("공정이 수정되었습니다.");
       return;
     }
 
-    const id = Math.max(0, ...processes.map((process) => process.id)) + 1;
-    const sequence = Math.max(0, ...selectedProcesses.map((process) => process.sequence)) + 1;
-    setProcesses((value) => [
-      ...value,
+    addProcessMutation.mutate(
+      { orderId: selectedOrder.id, body: processBody },
       {
-        id,
-        orderId: selectedOrder.id,
-        sequence,
-        processCode: `PROC-${String(id).padStart(3, "0")}`,
-        processName: processForm.processName.trim(),
-        workstation: processForm.workstation.trim() || "미지정",
-        assignee: processForm.assignee.trim() || "미지정",
-        startDate: processForm.startDate,
-        dueDate: processForm.dueDate,
-        progress,
-        status: processForm.status,
-      },
-    ]);
-    resetProcessForm();
-    setProcessFormOpen(false);
-    toast.success("공정이 추가되었습니다.");
+        onSuccess: () => {
+          resetProcessForm();
+          setProcessFormOpen(false);
+          toast.success("공정이 추가되었습니다.");
+        },
+      }
+    );
   };
 
   return (
@@ -1169,16 +1050,6 @@ function Td({
   );
 }
 
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function toDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function formatPeriod(start: string, end: string) {
   return `${formatShortDate(start)} - ${formatShortDate(end)}`;
 }
@@ -1206,61 +1077,3 @@ const statusToggleActiveClassName: Record<WorkOrderStatus, string> = {
 
 const inputClassName =
   "h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none transition-colors hover:bg-accent/35 focus:border-ring focus:ring-2 focus:ring-ring";
-
-function makeDefaultProcesses({
-  orderId,
-  startDate,
-  dueDate,
-  workstation,
-  assignee,
-  nextProcessId,
-}: {
-  orderId: number;
-  startDate: string;
-  dueDate: string;
-  workstation: string;
-  assignee: string;
-  nextProcessId: number;
-}): WorkOrderProcess[] {
-  return [
-    {
-      id: nextProcessId,
-      orderId,
-      sequence: 1,
-      processCode: `PROC-${String(nextProcessId).padStart(3, "0")}`,
-      processName: "자재 준비",
-      workstation: "자재 창고",
-      assignee,
-      startDate,
-      dueDate: startDate,
-      progress: 0,
-      status: "READY",
-    },
-    {
-      id: nextProcessId + 1,
-      orderId,
-      sequence: 2,
-      processCode: `PROC-${String(nextProcessId + 1).padStart(3, "0")}`,
-      processName: "조립",
-      workstation,
-      assignee,
-      startDate,
-      dueDate,
-      progress: 0,
-      status: "READY",
-    },
-    {
-      id: nextProcessId + 2,
-      orderId,
-      sequence: 3,
-      processCode: `PROC-${String(nextProcessId + 2).padStart(3, "0")}`,
-      processName: "검사",
-      workstation: "검사실",
-      assignee: "미지정",
-      startDate: dueDate,
-      dueDate,
-      progress: 0,
-      status: "READY",
-    },
-  ];
-}

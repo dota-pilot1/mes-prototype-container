@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
-  Database,
   GitBranch,
   ListFilter,
   Workflow,
 } from "lucide-react";
-import { initialOrders, initialProcesses } from "@/entities/work-order/model/mock";
+import {
+  splitWorkOrders,
+  workOrderApi,
+} from "@/entities/work-order/api/workOrderApi";
 import type {
   ProcessStatus,
   WorkOrder,
@@ -32,12 +35,20 @@ const allOrderValue = "ALL";
 
 export function WorkOrderWbs() {
   const [selectedOrderCode, setSelectedOrderCode] = useState(allOrderValue);
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ["work-orders"],
+    queryFn: workOrderApi.list,
+  });
+  const { orders, processList } = useMemo(() => {
+    const split = splitWorkOrders(workOrders);
+    return { orders: split.orders, processList: split.processes };
+  }, [workOrders]);
 
   const allGroups = useMemo<WbsGroup[]>(
     () =>
-      initialOrders
+      orders
         .map((order) => {
-          const processes = initialProcesses
+          const processes = processList
             .filter((process) => process.orderId === order.id)
             .sort((a, b) => a.sequence - b.sequence);
           const avgProgress =
@@ -51,7 +62,7 @@ export function WorkOrderWbs() {
         })
         .filter((group) => group.processes.length > 0)
         .sort((a, b) => a.order.code.localeCompare(b.order.code)),
-    []
+    [orders, processList]
   );
 
   const groups = useMemo(
@@ -89,8 +100,7 @@ export function WorkOrderWbs() {
               작업지시 WBS
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              작업지시에 등록된 상세 공정을 날짜별로 조회하는 화면입니다. 현재 표시는
-              사용자가 입력한 실데이터가 아니라 화면 흐름을 검증하기 위한 샘플입니다.
+              작업지시에 등록된 상세 공정을 날짜별로 펼쳐 일정 겹침과 지연을 확인하는 화면입니다.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -107,32 +117,11 @@ export function WorkOrderWbs() {
           </div>
         </div>
 
-        <section className="mt-4 rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-amber-950 shadow-sm">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Database className="h-4 w-4" />
-                현재 데이터 출처
-              </div>
-              <p className="mt-2 text-sm leading-6">
-                이 화면의 데이터는 사용자가 입력한 값이 아니라
-                <span className="font-semibold"> 작업지시/공정 샘플 mock</span>입니다.
-                백엔드화 후에는 `work_orders`, `work_order_processes` 테이블을 조회합니다.
-              </p>
-            </div>
-            <div className="grid gap-2 text-sm sm:grid-cols-3 lg:min-w-[720px]">
-              <SourceFact title="무엇을 조회?" text="작업지시별 상세 공정" />
-              <SourceFact title="왜 조회?" text="공정 일정 겹침과 지연 확인" />
-              <SourceFact title="누가 입력?" text="나중에는 작업지시 화면/API" />
-            </div>
-          </div>
-        </section>
-
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <SummaryCard icon={<Workflow className="h-4 w-4" />} label="샘플 작업지시" value={`${activeOrders}건`} />
-          <SummaryCard icon={<GitBranch className="h-4 w-4" />} label="샘플 상세 공정" value={`${rows.length}건`} />
-          <SummaryCard icon={<ListFilter className="h-4 w-4" />} label="샘플 진행 공정" value={`${inProgressCount}건`} />
-          <SummaryCard label="샘플 평균 진행률" value={`${averageProgress}%`} tone={delayedCount > 0 ? "warn" : "default"} />
+          <SummaryCard icon={<Workflow className="h-4 w-4" />} label="작업지시" value={`${activeOrders}건`} />
+          <SummaryCard icon={<GitBranch className="h-4 w-4" />} label="상세 공정" value={`${rows.length}건`} />
+          <SummaryCard icon={<ListFilter className="h-4 w-4" />} label="진행 공정" value={`${inProgressCount}건`} />
+          <SummaryCard label="평균 진행률" value={`${averageProgress}%`} tone={delayedCount > 0 ? "warn" : "default"} />
         </div>
 
         <section className="mt-4 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -168,7 +157,7 @@ export function WorkOrderWbs() {
         <section className="mt-4 min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-foreground">샘플 작업지시 공정 간트</h2>
+              <h2 className="text-lg font-bold text-foreground">작업지시 공정 간트</h2>
               <p className="text-sm text-muted-foreground">
                 기본은 전체 작업지시를 한눈에 비교합니다. 왼쪽 목록에서 한 건을 고르면 그 작업지시만 자세히 봅니다.
               </p>
@@ -424,15 +413,6 @@ function SummaryCard({
         {value}
       </div>
     </section>
-  );
-}
-
-function SourceFact({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-md border border-amber-200 bg-white/65 px-3 py-2">
-      <div className="text-xs font-semibold">{title}</div>
-      <div className="mt-1 text-xs leading-5">{text}</div>
-    </div>
   );
 }
 
