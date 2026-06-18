@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarDays,
   GitBranch,
@@ -81,9 +82,12 @@ export function WorkOrderWbs() {
     [groups]
   );
 
-  const chartDays = useMemo(() => makeChartDays(rows), [rows]);
+  const today = todayStr();
+  const chartDays = useMemo(() => makeChartDays(rows, today), [rows, today]);
   const activeOrders = groups.length;
-  const delayedCount = rows.filter((row) => row.process.status === "HOLD").length;
+  const delayedCount = rows.filter((row) =>
+    isDelayedProcess(row.process, today)
+  ).length;
   const inProgressCount = rows.filter((row) => row.process.status === "IN_PROGRESS").length;
   const averageProgress =
     rows.length === 0
@@ -114,6 +118,12 @@ export function WorkOrderWbs() {
                 ? "전체 보기"
                 : `${selectedOrderCode} 단일 보기`}
             </div>
+            {delayedCount > 0 ? (
+              <div className="inline-flex h-9 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                지연 {delayedCount}건
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -182,21 +192,35 @@ export function WorkOrderWbs() {
                 <div className="sticky left-0 z-20 border-b border-r border-border bg-muted/80 px-3 py-2 text-sm font-semibold">
                   WBS
                 </div>
-                {chartDays.map((day) => (
-                  <div
-                    key={day}
-                    className="border-b border-r border-border bg-muted/80 px-1 py-2 text-center text-xs text-muted-foreground"
-                  >
-                    <div>{formatDay(day)}</div>
-                    <div className="mt-0.5">{formatWeekday(day)}</div>
-                  </div>
-                ))}
+                {chartDays.map((day) => {
+                  const isToday = day === today;
+                  return (
+                    <div
+                      key={day}
+                      className={`border-b border-r border-border px-1 py-2 text-center text-xs ${
+                        isToday
+                          ? "border-l-2 border-l-primary bg-primary/10 font-semibold text-primary"
+                          : isWeekend(day)
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-muted/80 text-muted-foreground"
+                      }`}
+                    >
+                      <div>{formatDay(day)}</div>
+                      <div className="mt-0.5">{isToday ? "오늘" : formatWeekday(day)}</div>
+                    </div>
+                  );
+                })}
                 <div className="sticky right-0 z-20 border-b border-l border-border bg-muted/80 px-3 py-2 text-right text-sm font-semibold">
                   진행률
                 </div>
 
                 {groups.map((group) => (
-                  <WbsGanttGroup key={group.order.id} group={group} days={chartDays} />
+                  <WbsGanttGroup
+                    key={group.order.id}
+                    group={group}
+                    days={chartDays}
+                    today={today}
+                  />
                 ))}
               </div>
             </div>
@@ -274,8 +298,19 @@ function WbsOrderSidebar({
   );
 }
 
-function WbsGanttGroup({ group, days }: { group: WbsGroup; days: string[] }) {
+function WbsGanttGroup({
+  group,
+  days,
+  today,
+}: {
+  group: WbsGroup;
+  days: string[];
+  today: string;
+}) {
   const { order, avgProgress } = group;
+  const delayedInGroup = group.processes.filter((process) =>
+    isDelayedProcess(process, today)
+  ).length;
   return (
     <>
       <div className="sticky left-0 z-10 min-w-0 border-b border-r border-border bg-muted/60 px-3 py-2.5">
@@ -283,6 +318,12 @@ function WbsGanttGroup({ group, days }: { group: WbsGroup; days: string[] }) {
           <span className="text-xs font-bold text-foreground">{order.code}</span>
           <span className="truncate text-sm font-bold text-foreground">{order.itemName}</span>
           <StatusBadge status={order.status} />
+          {delayedInGroup > 0 ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+              <AlertTriangle className="h-3 w-3" />
+              지연 {delayedInGroup}
+            </span>
+          ) : null}
         </div>
         <div className="mt-1 truncate text-xs text-muted-foreground">
           {order.quantity.toLocaleString()}개 / {order.assignee} / {formatPeriod(order.startDate, order.dueDate)}
@@ -294,7 +335,9 @@ function WbsGanttGroup({ group, days }: { group: WbsGroup; days: string[] }) {
         return (
           <div
             key={`${order.id}-rollup-${day}`}
-            className="flex min-h-12 items-center border-b border-r border-border bg-muted/40 px-0.5"
+            className={`flex min-h-12 items-center border-b border-r border-border px-0.5 ${
+              dayCellTone(day, today) || "bg-muted/40"
+            }`}
           >
             {active ? (
               <div
@@ -311,26 +354,51 @@ function WbsGanttGroup({ group, days }: { group: WbsGroup; days: string[] }) {
         <span className="text-xs font-bold text-foreground">평균 {avgProgress}%</span>
       </div>
       {group.processes.map((process) => (
-        <WbsGanttRow key={`${order.id}-${process.id}`} row={{ order, process }} days={days} />
+        <WbsGanttRow
+          key={`${order.id}-${process.id}`}
+          row={{ order, process }}
+          days={days}
+          today={today}
+        />
       ))}
     </>
   );
 }
 
-function WbsGanttRow({ row, days }: { row: WbsRow; days: string[] }) {
+function WbsGanttRow({
+  row,
+  days,
+  today,
+}: {
+  row: WbsRow;
+  days: string[];
+  today: string;
+}) {
   const { order, process } = row;
   const label = `${process.sequence}. ${process.processName}`;
+  const delayed = isDelayedProcess(process, today);
 
   return (
     <>
-      <div className="sticky left-0 z-10 min-w-0 border-b border-r border-border bg-card py-3 pl-6 pr-3">
+      <div
+        className={`sticky left-0 z-10 min-w-0 border-b border-r border-border py-3 pr-3 ${
+          delayed ? "border-l-2 border-l-red-500 bg-red-50/60 pl-5" : "bg-card pl-6"
+        }`}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground">
             {process.sequence}.
           </span>
-          <span className="truncate text-sm font-semibold text-foreground">
+          <span
+            className={`truncate text-sm font-semibold ${
+              delayed ? "text-red-700" : "text-foreground"
+            }`}
+          >
             {process.processName}
           </span>
+          {delayed ? (
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-600" />
+          ) : null}
         </div>
         <div className="mt-1 truncate text-xs text-muted-foreground">
           {process.workstation} / {process.assignee}
@@ -353,7 +421,10 @@ function WbsGanttRow({ row, days }: { row: WbsRow; days: string[] }) {
           return (
             <div
               key={`${process.id}-${day}`}
-              className="flex min-h-16 items-center border-b border-r border-border px-0.5"
+              className={`flex min-h-16 items-center border-b border-r border-border px-0.5 ${dayCellTone(
+                day,
+                today
+              )}`}
             >
               {active ? (
                 <div
@@ -445,6 +516,14 @@ function StatusLegend() {
           {statusLabel[status]}
         </div>
       ))}
+      <div className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground">
+        <span className="h-3 w-0.5 bg-primary" />
+        오늘
+      </div>
+      <div className="inline-flex h-8 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 text-xs font-medium text-red-700">
+        <AlertTriangle className="h-3 w-3" />
+        지연
+      </div>
     </div>
   );
 }
@@ -459,14 +538,22 @@ function StatusBadge({ status }: { status: WorkOrderStatus }) {
   );
 }
 
-function makeChartDays(rows: WbsRow[]) {
+function makeChartDays(rows: WbsRow[], today: string) {
   if (rows.length === 0) return [];
 
+  // 오늘 기준선이 보이도록 차트 범위에 오늘 날짜를 항상 포함시킨다.
+  const todayTime = new Date(today).getTime();
   const start = new Date(
-    Math.min(...rows.map((row) => new Date(row.process.startDate).getTime()))
+    Math.min(
+      ...rows.map((row) => new Date(row.process.startDate).getTime()),
+      todayTime
+    )
   );
   const end = new Date(
-    Math.max(...rows.map((row) => new Date(row.process.dueDate).getTime()))
+    Math.max(
+      ...rows.map((row) => new Date(row.process.dueDate).getTime()),
+      todayTime
+    )
   );
   const days: string[] = [];
   let cursor = start;
@@ -477,6 +564,31 @@ function makeChartDays(rows: WbsRow[]) {
   }
 
   return days;
+}
+
+// 로컬 기준 오늘 날짜 (YYYY-MM-DD). toISOString의 UTC 변환 오차를 피하려고 직접 구성.
+function todayStr() {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function isWeekend(day: string) {
+  const weekday = new Date(day).getDay();
+  return weekday === 0 || weekday === 6;
+}
+
+// 종료일이 오늘 이전인데 아직 완료되지 않은 공정은 지연으로 본다.
+function isDelayedProcess(process: WorkOrderProcess, today: string) {
+  return process.dueDate < today && process.status !== "COMPLETED";
+}
+
+// 본문 날짜 칸의 배경(오늘 강조 + 주말 음영) 클래스.
+function dayCellTone(day: string, today: string) {
+  if (day === today) return "border-l-2 border-l-primary bg-primary/5";
+  if (isWeekend(day)) return "bg-muted/50";
+  return "";
 }
 
 function addDays(date: Date, days: number) {

@@ -28,18 +28,19 @@ public class WorkOrderSampleDataSeeder implements ApplicationRunner {
         LocalDate today = LocalDate.now();
 
         if (!workOrderRepository.existsByCode("WO-001")) {
+            // 오늘을 가로지르도록 배치: 좌판 가공은 종료일이 지났는데 60%라 '지연'으로 표시됨.
             WorkOrder wo1 = WorkOrder.create(
                     "WO-001", "PP-001", "ITM-001", "태스크 체어", 200,
-                    today.plusDays(1), today.plusDays(5),
-                    "의자 조립 1라인", "김민준", WorkOrderStatus.READY);
+                    today.minusDays(3), today.plusDays(1),
+                    "의자 조립 1라인", "김민준", WorkOrderStatus.IN_PROGRESS);
             wo1.addProcess(WorkOrderProcess.create(1, "PROC-001", "자재 출고", "자재 창고", "김민준",
-                    today.plusDays(1), today.plusDays(1), 100, WorkOrderStatus.COMPLETED));
+                    today.minusDays(3), today.minusDays(3), 100, WorkOrderStatus.COMPLETED));
             wo1.addProcess(WorkOrderProcess.create(2, "PROC-002", "좌판 가공", "목공 1라인", "김민준",
-                    today.plusDays(2), today.plusDays(3), 60, WorkOrderStatus.IN_PROGRESS));
+                    today.minusDays(2), today.minusDays(1), 60, WorkOrderStatus.IN_PROGRESS));
             wo1.addProcess(WorkOrderProcess.create(3, "PROC-003", "프레임 조립", "의자 조립 1라인", "최하윤",
-                    today.plusDays(4), today.plusDays(4), 0, WorkOrderStatus.READY));
+                    today, today, 0, WorkOrderStatus.READY));
             wo1.addProcess(WorkOrderProcess.create(4, "PROC-009", "검사/포장", "검사 포장실", "정검사",
-                    today.plusDays(5), today.plusDays(5), 0, WorkOrderStatus.READY));
+                    today.plusDays(1), today.plusDays(1), 0, WorkOrderStatus.READY));
             workOrderRepository.save(wo1);
         }
 
