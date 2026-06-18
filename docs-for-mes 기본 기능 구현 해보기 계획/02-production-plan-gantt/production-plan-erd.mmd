@@ -1,0 +1,71 @@
+erDiagram
+    ITEMS ||--o{ PRODUCTION_PLANS : "생산 대상 품목"
+    BOMS ||--o{ PRODUCTION_PLANS : "계획 기준 BOM"
+    PRODUCTION_PLANS ||--o{ WORK_ORDERS : "현장 실행 지시"
+    USERS ||--o{ PRODUCTION_PLANS : "계획 생성자"
+    USERS ||--o{ PRODUCTION_PLANS : "계획 승인자"
+
+    ITEMS {
+        bigint id PK
+        varchar item_code UK
+        varchar item_name
+        varchar item_type
+        varchar unit
+        numeric safety_stock
+        varchar description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    BOMS {
+        bigint id PK
+        varchar bom_code UK
+        varchar bom_name
+        bigint product_item_id FK
+        varchar version
+        varchar status
+        varchar description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    PRODUCTION_PLANS {
+        bigint id PK
+        varchar plan_code UK
+        bigint item_id FK
+        bigint bom_id FK
+        numeric planned_quantity
+        date start_date
+        date end_date
+        varchar status
+        bigint created_by_user_id FK
+        bigint approved_by_user_id FK
+        timestamptz approved_at
+        varchar memo
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WORK_ORDERS {
+        bigint id PK
+        varchar work_order_code UK
+        bigint production_plan_id FK
+        numeric ordered_quantity
+        date start_date
+        date end_date
+        varchar status
+        varchar work_center
+        varchar assignee_name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar username
+        varchar role
+        boolean active
+        timestamptz created_at
+        timestamptz updated_at
+    }
