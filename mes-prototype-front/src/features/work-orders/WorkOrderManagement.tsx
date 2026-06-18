@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import {
   addDays,
-  sourcePlans,
   toDateInput,
 } from "@/entities/work-order/model/mock";
+import { productionPlanApi } from "@/entities/production-plan/api/productionPlanApi";
 import {
   splitWorkOrders,
   workOrderApi,
@@ -84,6 +84,10 @@ export function WorkOrderManagement() {
     () => splitWorkOrders(workOrders),
     [workOrders]
   );
+  const { data: sourcePlans = [] } = useQuery({
+    queryKey: ["production-plans"],
+    queryFn: productionPlanApi.list,
+  });
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [processForm, setProcessForm] = useState<ProcessFormState>(emptyProcessForm);
@@ -196,7 +200,7 @@ export function WorkOrderManagement() {
         value: String(plan.id),
         label: `${plan.code} ${plan.itemName} ${plan.quantity.toLocaleString()}개`,
       })),
-    []
+    [sourcePlans]
   );
 
   const resetForm = () => {
@@ -283,7 +287,7 @@ export function WorkOrderManagement() {
 
     const nextOrder = {
       planCode: selectedPlan.code,
-      itemCode: selectedPlan.itemCode,
+      itemCode: selectedPlan.itemCode ?? undefined,
       itemName: selectedPlan.itemName,
       quantity,
       startDate: form.startDate,

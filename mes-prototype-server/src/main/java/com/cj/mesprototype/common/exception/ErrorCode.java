@@ -40,6 +40,8 @@ public enum ErrorCode {
     WORK_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "WO_001", "작업지시를 찾을 수 없습니다."),
     WORK_ORDER_CODE_DUPLICATE(HttpStatus.CONFLICT, "WO_002", "이미 존재하는 작업지시 코드입니다."),
     WORK_ORDER_PROCESS_NOT_FOUND(HttpStatus.NOT_FOUND, "WO_003", "작업지시 공정을 찾을 수 없습니다."),
+    PRODUCTION_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAN_001", "생산계획을 찾을 수 없습니다."),
+    PRODUCTION_PLAN_CODE_DUPLICATE(HttpStatus.CONFLICT, "PLAN_002", "이미 존재하는 생산계획 코드입니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;

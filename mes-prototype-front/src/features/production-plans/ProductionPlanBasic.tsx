@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   HelpCircle,
@@ -13,24 +13,16 @@ import {
   X,
 } from "lucide-react";
 import { bomApi } from "@/entities/bom/api/bomApi";
-import { toast } from "@/shared/lib/toast";
+import { productionPlanApi } from "@/entities/production-plan/api/productionPlanApi";
+import type {
+  CreateProductionPlanBody,
+  PlanStatus,
+  ProductionPlan,
+  UpdateProductionPlanBody,
+} from "@/entities/production-plan/model/types";
+import { toast, toastError } from "@/shared/lib/toast";
 import { InfoDialog } from "@/shared/ui/InfoDialog";
 import { Select } from "@/shared/ui/Select";
-
-type PlanStatus = "PLANNED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED";
-
-type ProductionPlan = {
-  id: number;
-  code: string;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  bomCode: string;
-  quantity: number;
-  startDate: string;
-  endDate: string;
-  status: PlanStatus;
-};
 
 type ProductOption = {
   itemId: number;
@@ -49,45 +41,6 @@ type FormState = {
 
 const today = new Date();
 
-const initialPlans: ProductionPlan[] = [
-  {
-    id: 1,
-    code: "PP-001",
-    itemId: 1,
-    itemCode: "ITM-001",
-    itemName: "의자",
-    bomCode: "BOM-001",
-    quantity: 200,
-    startDate: toDateInput(addDays(today, 1)),
-    endDate: toDateInput(addDays(today, 4)),
-    status: "CONFIRMED",
-  },
-  {
-    id: 2,
-    code: "PP-002",
-    itemId: 2,
-    itemCode: "ITM-002",
-    itemName: "책상",
-    bomCode: "BOM-002",
-    quantity: 120,
-    startDate: toDateInput(addDays(today, 3)),
-    endDate: toDateInput(addDays(today, 8)),
-    status: "PLANNED",
-  },
-  {
-    id: 3,
-    code: "PP-003",
-    itemId: 1,
-    itemCode: "ITM-001",
-    itemName: "의자",
-    bomCode: "BOM-001",
-    quantity: 80,
-    startDate: toDateInput(addDays(today, 9)),
-    endDate: toDateInput(addDays(today, 11)),
-    status: "IN_PROGRESS",
-  },
-];
-
 const emptyForm: FormState = {
   itemId: "",
   quantity: "100",
@@ -97,10 +50,15 @@ const emptyForm: FormState = {
 };
 
 export function ProductionPlanBasic() {
-  const [plans, setPlans] = useState<ProductionPlan[]>(initialPlans);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [termsOpen, setTermsOpen] = useState(false);
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ["production-plans"],
+    queryFn: productionPlanApi.list,
+  });
 
   const {
     data: boms = [],
@@ -110,6 +68,26 @@ export function ProductionPlanBasic() {
   } = useQuery({
     queryKey: ["boms"],
     queryFn: bomApi.list,
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["production-plans"] });
+
+  const createPlanMutation = useMutation({
+    mutationFn: productionPlanApi.create,
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "생산계획 등록에 실패했습니다."),
+  });
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateProductionPlanBody }) =>
+      productionPlanApi.update(id, body),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "생산계획 수정에 실패했습니다."),
+  });
+  const deletePlanMutation = useMutation({
+    mutationFn: (id: number) => productionPlanApi.remove(id),
+    onSuccess: invalidate,
+    onError: (e) => toastError(e, "생산계획 삭제에 실패했습니다."),
   });
 
   const productOptions = useMemo<ProductOption[]>(
@@ -151,11 +129,14 @@ export function ProductionPlanBasic() {
   };
 
   const deletePlan = (planId: number) => {
-    setPlans((value) => value.filter((plan) => plan.id !== planId));
-    if (editingPlanId === planId) {
-      resetForm();
-    }
-    toast.success("생산계획이 삭제되었습니다.");
+    deletePlanMutation.mutate(planId, {
+      onSuccess: () => {
+        if (editingPlanId === planId) {
+          resetForm();
+        }
+        toast.success("생산계획이 삭제되었습니다.");
+      },
+    });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -182,47 +163,45 @@ export function ProductionPlanBasic() {
       return;
     }
 
+    const planBody: UpdateProductionPlanBody = {
+      itemId: selectedProduct.itemId,
+      itemCode: selectedProduct.itemCode,
+      itemName: selectedProduct.itemName,
+      bomCode: selectedProduct.bomCode,
+      quantity,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      status: form.status,
+    };
+
     if (editingPlanId) {
-      setPlans((value) =>
-        value.map((plan) =>
-          plan.id === editingPlanId
-            ? {
-                ...plan,
-                itemId: selectedProduct.itemId,
-                itemCode: selectedProduct.itemCode,
-                itemName: selectedProduct.itemName,
-                bomCode: selectedProduct.bomCode,
-                quantity,
-                startDate: form.startDate,
-                endDate: form.endDate,
-                status: form.status,
-              }
-            : plan
-        )
+      updatePlanMutation.mutate(
+        { id: editingPlanId, body: planBody },
+        {
+          onSuccess: () => {
+            resetForm();
+            toast.success("생산계획이 수정되었습니다.");
+          },
+        }
       );
-      resetForm();
-      toast.success("생산계획이 수정되었습니다.");
       return;
     }
 
-    const id = Math.max(0, ...plans.map((plan) => plan.id)) + 1;
-    setPlans((value) => [
-      {
-        id,
-        code: `PP-${String(id).padStart(3, "0")}`,
-        itemId: selectedProduct.itemId,
-        itemCode: selectedProduct.itemCode,
-        itemName: selectedProduct.itemName,
-        bomCode: selectedProduct.bomCode,
-        quantity,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        status: form.status,
+    const nextNumber =
+      Math.max(
+        0,
+        ...plans.map((plan) => Number(plan.code.replace(/\D/g, "")) || 0)
+      ) + 1;
+    const createBody: CreateProductionPlanBody = {
+      code: `PP-${String(nextNumber).padStart(3, "0")}`,
+      ...planBody,
+    };
+    createPlanMutation.mutate(createBody, {
+      onSuccess: () => {
+        setForm((value) => ({ ...emptyForm, itemId: value.itemId }));
+        toast.success("생산계획이 등록되었습니다.");
       },
-      ...value,
-    ]);
-    setForm((value) => ({ ...emptyForm, itemId: value.itemId }));
-    toast.success("생산계획이 등록되었습니다.");
+    });
   };
 
   return (
@@ -632,8 +611,8 @@ function formatWeekday(value: string) {
 }
 
 const fallbackProducts: ProductOption[] = [
-  { itemId: 1, itemCode: "ITM-001", itemName: "의자", bomCode: "BOM-001" },
-  { itemId: 2, itemCode: "ITM-002", itemName: "책상", bomCode: "BOM-002" },
+  { itemId: 1, itemCode: "ITM-001", itemName: "태스크 체어", bomCode: "BOM-001" },
+  { itemId: 2, itemCode: "ITM-002", itemName: "회의 테이블", bomCode: "BOM-002" },
 ];
 
 const statusLabel: Record<PlanStatus, string> = {
