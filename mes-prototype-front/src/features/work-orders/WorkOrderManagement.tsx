@@ -71,6 +71,15 @@ const sourcePlans: SourcePlan[] = [
     startDate: toDateInput(addDays(today, 3)),
     endDate: toDateInput(addDays(today, 8)),
   },
+  {
+    id: 3,
+    code: "PP-003",
+    itemCode: "ITM-001",
+    itemName: "의자",
+    quantity: 80,
+    startDate: toDateInput(addDays(today, 9)),
+    endDate: toDateInput(addDays(today, 11)),
+  },
 ];
 
 const initialOrders: WorkOrder[] = [
@@ -100,6 +109,19 @@ const initialOrders: WorkOrder[] = [
     assignee: "박작업",
     status: "IN_PROGRESS",
   },
+  {
+    id: 3,
+    code: "WO-003",
+    planCode: "PP-003",
+    itemCode: "ITM-001",
+    itemName: "의자",
+    quantity: 80,
+    startDate: toDateInput(addDays(today, 9)),
+    dueDate: toDateInput(addDays(today, 11)),
+    workstation: "조립 1라인",
+    assignee: "이작업",
+    status: "HOLD",
+  },
 ];
 
 const emptyForm: FormState = {
@@ -122,6 +144,7 @@ export function WorkOrderManagement() {
   const readyCount = orders.filter((order) => order.status === "READY").length;
   const progressCount = orders.filter((order) => order.status === "IN_PROGRESS").length;
   const completedCount = orders.filter((order) => order.status === "COMPLETED").length;
+  const holdCount = orders.filter((order) => order.status === "HOLD").length;
 
   const planOptions = useMemo(
     () =>
@@ -347,10 +370,11 @@ export function WorkOrderManagement() {
           </div>
         </form>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
           <SummaryCard label="대기" value={`${readyCount}건`} />
           <SummaryCard label="진행 중" value={`${progressCount}건`} />
           <SummaryCard label="완료" value={`${completedCount}건`} />
+          <SummaryCard label="보류" value={`${holdCount}건`} />
         </div>
 
         <section className="mt-4 rounded-lg border border-border bg-card p-4 shadow-sm">
