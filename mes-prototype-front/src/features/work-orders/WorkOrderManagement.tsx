@@ -285,6 +285,7 @@ export function WorkOrderManagement() {
   const [editingProcessId, setEditingProcessId] = useState<number | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(initialOrders[0]?.id ?? null);
   const [orderFormOpen, setOrderFormOpen] = useState(false);
+  const [processFormOpen, setProcessFormOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
 
   const selectedPlan = sourcePlans.find((plan) => String(plan.id) === form.planId) ?? null;
@@ -363,6 +364,7 @@ export function WorkOrderManagement() {
     if (selectedOrderId === orderId) {
       setSelectedOrderId(nextSelectedOrder?.id ?? null);
       setEditingProcessId(null);
+      setProcessFormOpen(false);
     }
     toast.success("작업지시가 삭제되었습니다.");
   };
@@ -438,6 +440,7 @@ export function WorkOrderManagement() {
       }),
     ]);
     setSelectedOrderId(id);
+    setProcessFormOpen(false);
     resetForm();
     setOrderFormOpen(false);
     toast.success("작업지시가 생성되었습니다.");
@@ -454,11 +457,15 @@ export function WorkOrderManagement() {
       status: process.status,
     });
     setEditingProcessId(process.id);
+    setProcessFormOpen(true);
   };
 
   const deleteProcess = (processId: number) => {
     setProcesses((value) => value.filter((process) => process.id !== processId));
-    if (editingProcessId === processId) resetProcessForm();
+    if (editingProcessId === processId) {
+      resetProcessForm();
+      setProcessFormOpen(false);
+    }
     toast.success("공정이 삭제되었습니다.");
   };
 
@@ -521,6 +528,7 @@ export function WorkOrderManagement() {
         )
       );
       resetProcessForm();
+      setProcessFormOpen(false);
       toast.success("공정이 수정되었습니다.");
       return;
     }
@@ -544,6 +552,7 @@ export function WorkOrderManagement() {
       },
     ]);
     resetProcessForm();
+    setProcessFormOpen(false);
     toast.success("공정이 추가되었습니다.");
   };
 
@@ -804,15 +813,35 @@ export function WorkOrderManagement() {
           </section>
 
           <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="mb-3 flex flex-col gap-1">
-              <h2 className="text-lg font-bold text-foreground">선택 작업지시 상세 공정</h2>
-              <p className="text-sm text-muted-foreground">
-                {selectedOrder
-                  ? `${selectedOrder.code} / ${selectedOrder.itemName} / ${selectedProcesses.length}개 공정`
-                  : "작업지시를 선택하세요."}
-              </p>
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-foreground">선택 작업지시 상세 공정</h2>
+                <p className="text-sm text-muted-foreground">
+                  {selectedOrder
+                    ? `${selectedOrder.code} / ${selectedOrder.itemName} / ${selectedProcesses.length}개 공정`
+                    : "작업지시를 선택하세요."}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!selectedOrder}
+                onClick={() => {
+                  if (processFormOpen) {
+                    resetProcessForm();
+                    setProcessFormOpen(false);
+                    return;
+                  }
+                  resetProcessForm();
+                  setProcessFormOpen(true);
+                }}
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {processFormOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {processFormOpen ? "폼 닫기" : "공정 추가"}
+              </button>
             </div>
 
+            {processFormOpen ? (
             <form
               onSubmit={submitProcess}
               className="grid min-w-0 gap-3 rounded-md border border-border bg-muted/25 p-3 sm:grid-cols-2"
@@ -904,7 +933,10 @@ export function WorkOrderManagement() {
                 {editingProcessId ? (
                   <button
                     type="button"
-                    onClick={resetProcessForm}
+                    onClick={() => {
+                      resetProcessForm();
+                      setProcessFormOpen(false);
+                    }}
                     className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
                   >
                     <X className="h-4 w-4" />
@@ -912,6 +944,7 @@ export function WorkOrderManagement() {
                 ) : null}
               </div>
             </form>
+            ) : null}
 
             <div className="mt-3 grid gap-2">
               {selectedProcesses.map((process) => (
