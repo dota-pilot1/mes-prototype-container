@@ -1,5 +1,8 @@
 export const nav = {
   dashboard: "ダッシュボード",
+  productionPlanBasic: "生産計画 基本",
+  productionPlanWbs: "生産計画 WBS",
+  workOrderManagement: "作業指示管理",
   admin: "管理",
   users: "ユーザー管理",
   roleManagement: "ロール管理",
