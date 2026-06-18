@@ -14,6 +14,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -26,6 +28,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class MonitoringService {
 
     private final WorkOrderRepository workOrderRepository;
+
+    // 라인별 누적 생산량 카운터(메모리). 호출마다 위로만 증가하고 절대 줄지 않는다.
+    private final Map<String, Integer> outputCounters = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
     public List<MonitoringLineSnapshot> snapshot() {
@@ -68,7 +73,11 @@ public class MonitoringService {
                 // 라인별 고정 베이스라인 + 미세 변동 → '살아있되' 막 튀지 않게.
                 int oeeBase = 74 + Math.floorMod(line.hashCode(), 16);            // 74~89, 라인마다 고정
                 oee = Math.max(0, Math.min(99, oeeBase + rnd.nextInt(-2, 3)));    // ±2 살랑
-                output = baseOutput;                                              // 진행률 기반, 역행 없음(누적은 안 줄어듦)
+                // 진행률 기반값을 바닥으로, 매 호출 +0~1씩 누적 증가(목표 도달 시 정지). 절대 역행 없음.
+                int current = Math.max(baseOutput, outputCounters.getOrDefault(line, baseOutput));
+                current = Math.min(target, current + rnd.nextInt(0, 2));
+                outputCounters.put(line, current);
+                output = current;
                 double defectBase = 1.5 + Math.floorMod(line.hashCode(), 20) / 10.0; // 1.5~3.4, 라인마다 고정
                 defect = Math.round(Math.max(0.0, defectBase + (rnd.nextDouble() - 0.5) * 0.6) * 10) / 10.0; // ±0.3
             } else if (status == LineStatus.STOPPED) {
