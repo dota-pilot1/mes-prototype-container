@@ -214,61 +214,6 @@ export function WorkOrderWbs() {
           </div>
         </section>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="mb-3">
-              <h2 className="text-lg font-bold text-foreground">작업지시별 공정 구성</h2>
-              <p className="text-sm text-muted-foreground">
-                WO-001 예시처럼 자재 출고, 좌판 가공, 프레임 조립, 검사/포장 순서가 WBS 하위 작업으로 묶입니다.
-              </p>
-            </div>
-            <div className="grid gap-3 lg:grid-cols-3">
-              {initialOrders.map((order) => {
-                const orderProcesses = initialProcesses
-                  .filter((process) => process.orderId === order.id)
-                  .sort((a, b) => a.sequence - b.sequence);
-                return (
-                  <article key={order.id} className="rounded-lg border border-border bg-background p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold text-foreground">
-                          {order.code} {order.itemName}
-                        </h3>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {order.planCode} / {order.quantity.toLocaleString()}개 / {order.assignee}
-                        </p>
-                      </div>
-                      <StatusBadge status={order.status} />
-                    </div>
-                    <ol className="mt-4 grid gap-2">
-                      {orderProcesses.map((process) => (
-                        <li key={process.id} className="flex items-center gap-2 text-sm">
-                          <span className={`h-2.5 w-2.5 rounded-full ${statusDotClassName[process.status]}`} />
-                          <span className="min-w-0 flex-1 truncate">
-                            {process.sequence}. {process.processName}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{process.progress}%</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground">연결 범위</h2>
-            <div className="mt-3 grid gap-3 text-sm text-muted-foreground">
-              <p className="leading-6">
-                지금 보이는 행은 데모용 mock입니다. 아직 사용자가 입력한 생산계획이나 작업지시와 저장 연동되지 않았습니다.
-              </p>
-              <p className="leading-6">
-                다음 단계에서 작업지시 CRUD를 백엔드화하면 이 화면은 저장된 공정 목록만 조회해서 렌더링합니다.
-              </p>
-            </div>
-          </section>
-        </div>
       </section>
     </main>
   );
@@ -402,31 +347,45 @@ function WbsGanttRow({ row, days }: { row: WbsRow; days: string[] }) {
           {process.workstation} / {process.assignee}
         </div>
       </div>
-      {days.map((day) => {
-        const active = day >= process.startDate && day <= process.dueDate;
-        const isStart = day === process.startDate;
-        return (
-          <div
-            key={`${process.id}-${day}`}
-            className="flex min-h-16 items-center border-b border-r border-border px-0.5"
-          >
-            {active ? (
-              <div
-                className={`relative h-7 w-full ${statusBarClassName[process.status]} ${
-                  isStart ? "rounded-l-sm" : ""
-                } ${day === process.dueDate ? "rounded-r-sm" : ""}`}
-                title={`${order.code} ${label} ${formatPeriod(process.startDate, process.dueDate)}`}
-              >
-                {isStart ? (
-                  <span className="absolute left-2 top-1/2 z-20 hidden min-w-max -translate-y-1/2 whitespace-nowrap rounded-sm bg-black/10 px-1.5 py-0.5 text-xs font-semibold text-white shadow-sm lg:block">
-                    {process.processName}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+      {(() => {
+        const activeDays = days.filter(
+          (day) => day >= process.startDate && day <= process.dueDate
         );
-      })}
+        const totalDays = activeDays.length;
+        const progressFrac = process.progress / 100;
+        return days.map((day) => {
+          const activeIndex = activeDays.indexOf(day);
+          const active = activeIndex !== -1;
+          const isStart = day === process.startDate;
+          // 이 칸이 진행 바에서 채워지는 비율 (전체 진행률을 일자별로 분배)
+          const fillRatio = active
+            ? Math.min(1, Math.max(0, progressFrac * totalDays - activeIndex))
+            : 0;
+          return (
+            <div
+              key={`${process.id}-${day}`}
+              className="flex min-h-16 items-center border-b border-r border-border px-0.5"
+            >
+              {active ? (
+                <div
+                  className={`relative h-7 w-full overflow-hidden ${statusTrackClassName[process.status]} ${
+                    isStart ? "rounded-l-sm" : ""
+                  } ${day === process.dueDate ? "rounded-r-sm" : ""}`}
+                  title={`${order.code} ${label} · ${formatPeriod(
+                    process.startDate,
+                    process.dueDate
+                  )} · ${process.progress}%`}
+                >
+                  <div
+                    className={`h-full ${statusBarClassName[process.status]}`}
+                    style={{ width: `${fillRatio * 100}%` }}
+                  />
+                </div>
+              ) : null}
+            </div>
+          );
+        });
+      })()}
       <div className="sticky right-0 z-10 border-b border-l border-border bg-card px-3 py-3">
         <div className="flex items-center justify-end gap-2">
           <div className="h-2 w-14 overflow-hidden rounded-full bg-muted">
@@ -582,6 +541,14 @@ const statusBarClassName: Record<ProcessStatus, string> = {
   IN_PROGRESS: "bg-amber-500",
   COMPLETED: "bg-emerald-600",
   HOLD: "bg-red-600",
+};
+
+// 계획 구간(바탕) — 진행률만큼만 위의 진한 색으로 채워집니다.
+const statusTrackClassName: Record<ProcessStatus, string> = {
+  READY: "bg-slate-200",
+  IN_PROGRESS: "bg-amber-200",
+  COMPLETED: "bg-emerald-200",
+  HOLD: "bg-red-200",
 };
 
 const statusDotClassName: Record<ProcessStatus, string> = {
