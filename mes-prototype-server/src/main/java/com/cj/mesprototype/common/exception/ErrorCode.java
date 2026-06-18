@@ -37,6 +37,9 @@ public enum ErrorCode {
     BOM_LINE_EMPTY(HttpStatus.BAD_REQUEST, "BOM_005", "BOM 자재 라인은 최소 1개 이상이어야 합니다."),
     INVENTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "BOM_006", "재고 정보를 찾을 수 없습니다."),
     BOM_CODE_DUPLICATE(HttpStatus.CONFLICT, "BOM_007", "이미 존재하는 BOM 코드입니다."),
+    WORK_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "WO_001", "작업지시를 찾을 수 없습니다."),
+    WORK_ORDER_CODE_DUPLICATE(HttpStatus.CONFLICT, "WO_002", "이미 존재하는 작업지시 코드입니다."),
+    WORK_ORDER_PROCESS_NOT_FOUND(HttpStatus.NOT_FOUND, "WO_003", "작업지시 공정을 찾을 수 없습니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;
