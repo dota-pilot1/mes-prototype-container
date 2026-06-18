@@ -20,14 +20,14 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 type InventoryForm = {
   itemId: string;
-  onHandQty: number;
-  reservedQty: number;
+  onHandQty: string;
+  reservedQty: string;
 };
 
 const emptyForm: InventoryForm = {
   itemId: "",
-  onHandQty: 0,
-  reservedQty: 0,
+  onHandQty: "0",
+  reservedQty: "0",
 };
 
 export function InventoryManagementGrid() {
@@ -78,48 +78,48 @@ export function InventoryManagementGrid() {
 
   const columnDefs = useMemo<ColDef<Inventory>[]>(
     () => [
-      { field: "id", headerName: "ID", width: 90, pinned: "left" },
+      { field: "id", headerName: "ID", width: 70, pinned: "left" },
       {
         field: "item.itemCode",
         headerName: "품목 코드",
-        minWidth: 140,
+        width: 130,
         pinned: "left",
       },
       {
         field: "item.itemName",
         headerName: "품목명",
-        minWidth: 160,
+        minWidth: 140,
         flex: 1,
       },
-      { field: "item.unit", headerName: "단위", width: 100 },
+      { field: "item.unit", headerName: "단위", width: 80 },
       {
         field: "onHandQty",
         headerName: "현재고",
-        width: 130,
+        width: 110,
         type: "numericColumn",
       },
       {
         field: "reservedQty",
         headerName: "예약수량",
-        width: 130,
+        width: 110,
         type: "numericColumn",
       },
       {
         field: "availableQty",
         headerName: "가용수량",
-        width: 130,
+        width: 110,
         type: "numericColumn",
       },
       {
         field: "item.safetyStock",
         headerName: "안전재고",
-        width: 130,
+        width: 110,
         type: "numericColumn",
       },
       {
         field: "updatedAt",
         headerName: "수정일",
-        minWidth: 180,
+        minWidth: 160,
         valueFormatter: ({ value }) => formatDateTime(value),
       },
     ],
@@ -142,37 +142,33 @@ export function InventoryManagementGrid() {
       toast.error("품목을 선택하세요.");
       return;
     }
-    if (form.reservedQty > form.onHandQty) {
+    const onHandQty = Number(form.onHandQty || 0);
+    const reservedQty = Number(form.reservedQty || 0);
+    if (reservedQty > onHandQty) {
       toast.error("예약수량은 현재고보다 클 수 없습니다.");
       return;
     }
 
     const body: CreateInventoryBody = {
       itemId,
-      onHandQty: Number(form.onHandQty),
-      reservedQty: Number(form.reservedQty),
+      onHandQty,
+      reservedQty,
     };
     upsertMutation.mutate(body);
   };
 
   const availableQty = Math.max(
-    Number(form.onHandQty ?? 0) - Number(form.reservedQty ?? 0),
+    Number(form.onHandQty || 0) - Number(form.reservedQty || 0),
     0
   );
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background px-6 py-8">
-      <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">BOM/MRP</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-              재고 관리
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              자재 품목별 현재고와 예약 수량을 관리합니다. 가용수량은 현재고에서 예약수량을 뺀 값입니다.
-            </p>
-          </div>
+    <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30 px-6 py-5">
+      <section className="mx-auto min-w-0 max-w-[1600px]">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            재고 관리
+          </h1>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -196,12 +192,12 @@ export function InventoryManagementGrid() {
 
         <form
           onSubmit={submit}
-          className="mt-6 grid gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-[1.5fr_140px_140px_140px_auto]"
+          className="mt-4 grid min-w-0 gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-[520px_140px_140px_140px_auto]"
         >
           <Field label="자재 품목">
             <Select
               value={form.itemId}
-              onChange={(itemId) => setForm((v) => ({ ...v, itemId }))}
+              onValueChange={(itemId) => setForm((v) => ({ ...v, itemId }))}
               options={[{ value: "", label: itemsLoading ? "품목 로딩 중" : "품목 선택" }, ...itemOptions]}
               ariaLabel="자재 품목"
               disabled={itemsLoading}
@@ -213,7 +209,7 @@ export function InventoryManagementGrid() {
               min="0"
               value={form.onHandQty}
               onChange={(e) =>
-                setForm((v) => ({ ...v, onHandQty: Number(e.target.value) }))
+                setForm((v) => ({ ...v, onHandQty: e.target.value }))
               }
               className={inputClassName}
             />
@@ -224,13 +220,13 @@ export function InventoryManagementGrid() {
               min="0"
               value={form.reservedQty}
               onChange={(e) =>
-                setForm((v) => ({ ...v, reservedQty: Number(e.target.value) }))
+                setForm((v) => ({ ...v, reservedQty: e.target.value }))
               }
               className={inputClassName}
             />
           </Field>
           <Field label="가용수량">
-            <div className="flex h-10 items-center rounded-md border border-border bg-muted px-3 text-sm font-medium">
+            <div className="flex h-9 items-center rounded-md border border-border bg-muted px-3 text-sm font-medium">
               {availableQty.toLocaleString()}
             </div>
           </Field>
@@ -238,7 +234,7 @@ export function InventoryManagementGrid() {
             <button
               type="submit"
               disabled={upsertMutation.isPending || itemsLoading}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
               저장
@@ -246,7 +242,7 @@ export function InventoryManagementGrid() {
           </div>
         </form>
 
-        <section className="mt-5 rounded-lg border border-border bg-card p-4">
+        <section className="mt-4 min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4">
           <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-base font-semibold">재고 목록</h2>
@@ -267,7 +263,7 @@ export function InventoryManagementGrid() {
               재고 데이터를 불러오지 못했습니다.
             </div>
           ) : (
-            <div className="ag-theme-quartz h-[520px] w-full">
+            <div className="ag-theme-quartz h-[clamp(340px,calc(100vh-24rem),520px)] min-w-0 w-full">
               <AgGridReact<Inventory>
                 theme="legacy"
                 rowData={inventories}
@@ -318,7 +314,7 @@ export function InventoryManagementGrid() {
 }
 
 const inputClassName =
-  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
 
 function Field({
   label,

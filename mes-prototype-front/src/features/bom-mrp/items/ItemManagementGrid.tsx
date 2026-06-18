@@ -17,18 +17,22 @@ import { Select } from "@/shared/ui/Select";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const emptyForm: CreateItemBody = {
+type ItemForm = Omit<CreateItemBody, "safetyStock"> & {
+  safetyStock: string;
+};
+
+const emptyForm: ItemForm = {
   itemCode: "",
   itemName: "",
   itemType: "MATERIAL",
   unit: "EA",
-  safetyStock: 0,
+  safetyStock: "0",
   description: "",
 };
 
 export function ItemManagementGrid() {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<CreateItemBody>(emptyForm);
+  const [form, setForm] = useState<ItemForm>(emptyForm);
   const [quickFilter, setQuickFilter] = useState("");
   const [termsOpen, setTermsOpen] = useState(false);
 
@@ -92,7 +96,7 @@ export function ItemManagementGrid() {
       itemName: form.itemName.trim(),
       itemType: form.itemType,
       unit: form.unit.trim(),
-      safetyStock: Number(form.safetyStock ?? 0),
+      safetyStock: Number(form.safetyStock || 0),
       description: form.description?.trim() || undefined,
     };
 
@@ -105,18 +109,12 @@ export function ItemManagementGrid() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background px-6 py-8">
-      <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">BOM/MRP</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-              품목 관리
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              제품과 자재를 먼저 등록합니다. BOM, 재고, 생산계획은 모두 품목 데이터를 참조합니다.
-            </p>
-          </div>
+    <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30 px-6 py-5">
+      <section className="mx-auto min-w-0 max-w-[1600px]">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            품목 관리
+          </h1>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -140,7 +138,7 @@ export function ItemManagementGrid() {
 
         <form
           onSubmit={submit}
-          className="mt-6 grid gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-[1fr_1fr_150px_120px_140px_1.5fr_auto]"
+          className="mt-4 grid min-w-0 gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_120px_140px_minmax(0,1.5fr)_auto]"
         >
           <Field label="품목 코드">
             <input
@@ -161,7 +159,7 @@ export function ItemManagementGrid() {
           <Field label="구분">
             <Select<ItemType>
               value={form.itemType}
-              onChange={(itemType) => setForm((v) => ({ ...v, itemType }))}
+              onValueChange={(itemType) => setForm((v) => ({ ...v, itemType }))}
               options={[
                 { value: "PRODUCT", label: "제품" },
                 { value: "MATERIAL", label: "자재" },
@@ -181,9 +179,9 @@ export function ItemManagementGrid() {
             <input
               type="number"
               min="0"
-              value={form.safetyStock ?? 0}
+              value={form.safetyStock}
               onChange={(e) =>
-                setForm((v) => ({ ...v, safetyStock: Number(e.target.value) }))
+                setForm((v) => ({ ...v, safetyStock: e.target.value }))
               }
               className={inputClassName}
             />
@@ -200,7 +198,7 @@ export function ItemManagementGrid() {
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
               등록
@@ -208,7 +206,7 @@ export function ItemManagementGrid() {
           </div>
         </form>
 
-        <section className="mt-5 rounded-lg border border-border bg-card p-4">
+        <section className="mt-4 min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4">
           <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-base font-semibold">품목 목록</h2>
@@ -229,7 +227,7 @@ export function ItemManagementGrid() {
               품목 데이터를 불러오지 못했습니다.
             </div>
           ) : (
-            <div className="ag-theme-quartz h-[520px] w-full">
+            <div className="ag-theme-quartz h-[clamp(340px,calc(100vh-24rem),520px)] min-w-0 w-full">
               <AgGridReact<Item>
                 theme="legacy"
                 rowData={items}
@@ -285,7 +283,7 @@ export function ItemManagementGrid() {
 }
 
 const inputClassName =
-  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
 
 function Field({
   label,

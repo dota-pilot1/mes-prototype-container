@@ -27,8 +27,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 type BomLineForm = {
   key: string;
   materialItemId: string;
-  requiredQty: number;
-  lossRate: number;
+  requiredQty: string;
+  lossRate: string;
   description: string;
 };
 
@@ -45,8 +45,8 @@ type BomForm = {
 const emptyLine = (): BomLineForm => ({
   key: crypto.randomUUID(),
   materialItemId: "",
-  requiredQty: 1,
-  lossRate: 0,
+  requiredQty: "1",
+  lossRate: "0",
   description: "",
 });
 
@@ -130,33 +130,10 @@ export function BomManagementGrid() {
         valueFormatter: ({ value }) => statusLabel(value),
       },
       {
-        headerName: "자재 수",
+        headerName: "필요 자재 수",
         width: 110,
         valueGetter: ({ data }) => data?.lines.length ?? 0,
         type: "numericColumn",
-      },
-      { field: "description", headerName: "설명", minWidth: 220, flex: 1 },
-    ],
-    []
-  );
-
-  const lineColumnDefs = useMemo<ColDef<BomLine>[]>(
-    () => [
-      { field: "materialItem.itemCode", headerName: "자재 코드", minWidth: 130 },
-      { field: "materialItem.itemName", headerName: "자재명", minWidth: 150, flex: 1 },
-      { field: "materialItem.unit", headerName: "단위", width: 90 },
-      {
-        field: "requiredQty",
-        headerName: "필요수량",
-        width: 120,
-        type: "numericColumn",
-      },
-      {
-        field: "lossRate",
-        headerName: "손실률",
-        width: 110,
-        type: "numericColumn",
-        valueFormatter: ({ value }) => `${Number(value ?? 0) * 100}%`,
       },
       { field: "description", headerName: "설명", minWidth: 220, flex: 1 },
     ],
@@ -178,8 +155,8 @@ export function BomManagementGrid() {
     const lines = form.lines
       .map((line) => ({
         materialItemId: Number(line.materialItemId),
-        requiredQty: Number(line.requiredQty),
-        lossRate: Number(line.lossRate ?? 0),
+        requiredQty: Number(line.requiredQty || 0),
+        lossRate: Number(line.lossRate || 0),
         description: line.description.trim() || undefined,
       }))
       .filter((line) => line.materialItemId && line.requiredQty > 0);
@@ -215,20 +192,15 @@ export function BomManagementGrid() {
       lines: current.lines.map((line) => (line.key === key ? updater(line) : line)),
     }));
   };
+  const displayedBom = selectedBom ?? boms[0] ?? null;
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background px-6 py-8">
-      <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">BOM/MRP</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-              BOM 관리
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              생산 품목별 BOM 설계서를 등록하고 제품 1개당 필요한 자재 수량을 관리합니다.
-            </p>
-          </div>
+    <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30 px-6 py-5">
+      <section className="mx-auto min-w-0 max-w-[1600px]">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            BOM 관리
+          </h1>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -250,8 +222,27 @@ export function BomManagementGrid() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="mt-6 rounded-lg border border-border bg-card p-4">
-          <div className="grid gap-3 lg:grid-cols-[140px_1fr_1fr_100px_140px_1.5fr]">
+        <form onSubmit={submit} className="mt-4 rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setForm((v) => ({ ...v, lines: [...v.lines, emptyLine()] }))}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
+            >
+              <Plus className="h-4 w-4" />
+              라인 추가
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              BOM 저장
+            </button>
+          </div>
+
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[140px_280px_320px_90px_130px_minmax(260px,1fr)]">
             <Field label="BOM 코드">
               <input
                 value={form.bomCode}
@@ -271,7 +262,7 @@ export function BomManagementGrid() {
             <Field label="생산 품목">
               <Select
                 value={form.productItemId}
-                onChange={(productItemId) => setForm((v) => ({ ...v, productItemId }))}
+                onValueChange={(productItemId) => setForm((v) => ({ ...v, productItemId }))}
                 options={[{ value: "", label: itemsLoading ? "품목 로딩 중" : "생산 품목 선택" }, ...productOptions]}
                 disabled={itemsLoading}
                 ariaLabel="생산 품목"
@@ -287,7 +278,7 @@ export function BomManagementGrid() {
             <Field label="상태">
               <Select<BomStatus>
                 value={form.status}
-                onChange={(status) => setForm((v) => ({ ...v, status }))}
+                onValueChange={(status) => setForm((v) => ({ ...v, status }))}
                 options={[
                   { value: "DRAFT", label: "초안" },
                   { value: "APPROVED", label: "승인" },
@@ -306,36 +297,23 @@ export function BomManagementGrid() {
             </Field>
           </div>
 
-          <div className="mt-5 border-t border-border pt-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold">BOM 상세 자재 라인</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  제품 1개를 만들 때 필요한 자재와 수량을 입력합니다.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setForm((v) => ({ ...v, lines: [...v.lines, emptyLine()] }))}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
-              >
-                <Plus className="h-4 w-4" />
-                라인 추가
-              </button>
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-3 flex items-center gap-3">
+              <h2 className="text-base font-semibold">BOM 상세 자재 라인</h2>
             </div>
 
             <div className="grid gap-2">
               {form.lines.map((line, index) => (
                 <div
                   key={line.key}
-                  className="grid gap-2 rounded-md border border-border bg-background p-3 lg:grid-cols-[42px_1.5fr_130px_130px_1.5fr_42px]"
+                    className="grid gap-2 rounded-md border border-border bg-muted/20 p-3 lg:grid-cols-[42px_480px_120px_120px_minmax(260px,1fr)_42px]"
                 >
-                  <div className="flex h-10 items-center text-sm font-medium text-muted-foreground">
+                  <div className="flex h-9 items-center text-sm font-medium text-muted-foreground">
                     #{index + 1}
                   </div>
                   <Select
                     value={line.materialItemId}
-                    onChange={(materialItemId) =>
+                    onValueChange={(materialItemId) =>
                       updateLine(line.key, (v) => ({ ...v, materialItemId }))
                     }
                     options={[{ value: "", label: itemsLoading ? "품목 로딩 중" : "자재 품목 선택" }, ...materialOptions]}
@@ -350,7 +328,7 @@ export function BomManagementGrid() {
                     onChange={(e) =>
                       updateLine(line.key, (v) => ({
                         ...v,
-                        requiredQty: Number(e.target.value),
+                        requiredQty: e.target.value,
                       }))
                     }
                     className={inputClassName}
@@ -364,7 +342,7 @@ export function BomManagementGrid() {
                     onChange={(e) =>
                       updateLine(line.key, (v) => ({
                         ...v,
-                        lossRate: Number(e.target.value),
+                        lossRate: e.target.value,
                       }))
                     }
                     className={inputClassName}
@@ -390,7 +368,7 @@ export function BomManagementGrid() {
                         lines: v.lines.length === 1 ? [emptyLine()] : v.lines.filter((l) => l.key !== line.key),
                       }))
                     }
-                    className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background hover:bg-accent"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background hover:bg-accent"
                     aria-label="라인 삭제"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -400,79 +378,69 @@ export function BomManagementGrid() {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
-            >
-              <Plus className="h-4 w-4" />
-              BOM 저장
-            </button>
-          </div>
         </form>
 
-        <section className="mt-5 rounded-lg border border-border bg-card p-4">
-          <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-base font-semibold">BOM 목록</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                총 {boms.length.toLocaleString()}개 BOM
-              </p>
-            </div>
-            <input
-              value={quickFilter}
-              onChange={(e) => setQuickFilter(e.target.value)}
-              placeholder="빠른 검색"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:w-64"
-            />
-          </div>
-
-          {isError ? (
-            <div className="flex h-[420px] items-center justify-center rounded-md border border-border text-sm text-destructive">
-              BOM 데이터를 불러오지 못했습니다.
-            </div>
-          ) : (
-            <div className="ag-theme-quartz h-[420px] w-full">
-              <AgGridReact<Bom>
-                theme="legacy"
-                rowData={boms}
-                columnDefs={bomColumnDefs}
-                defaultColDef={defaultColDef}
-                quickFilterText={quickFilter}
-                loading={bomsLoading}
-                pagination
-                paginationPageSize={20}
-                paginationPageSizeSelector={[20, 50, 100]}
-                animateRows
-                rowSelection="single"
-                onRowClicked={(event: RowClickedEvent<Bom>) =>
-                  setSelectedBom(event.data ?? null)
-                }
+        <section className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+          <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-base font-semibold">BOM 목록</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  총 {boms.length.toLocaleString()}개 BOM
+                </p>
+              </div>
+              <input
+                value={quickFilter}
+                onChange={(e) => setQuickFilter(e.target.value)}
+                placeholder="빠른 검색"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:w-64"
               />
             </div>
-          )}
-        </section>
 
-        <section className="mt-5 rounded-lg border border-border bg-card p-4">
-          <div className="mb-3">
-            <h2 className="text-base font-semibold">선택 BOM 상세</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {selectedBom
-                ? `${selectedBom.bomCode} ${selectedBom.bomName}`
-                : "BOM 목록에서 행을 선택하세요."}
-            </p>
+            {isError ? (
+              <div className="flex h-[420px] items-center justify-center rounded-md border border-border text-sm text-destructive">
+                BOM 데이터를 불러오지 못했습니다.
+              </div>
+            ) : (
+              <div className="ag-theme-quartz h-[clamp(300px,calc(100vh-29rem),380px)] min-w-0 w-full">
+                <AgGridReact<Bom>
+                  theme="legacy"
+                  rowData={boms}
+                  columnDefs={bomColumnDefs}
+                  defaultColDef={defaultColDef}
+                  quickFilterText={quickFilter}
+                  loading={bomsLoading}
+                  pagination
+                  paginationPageSize={20}
+                  paginationPageSizeSelector={[20, 50, 100]}
+                  animateRows
+                  rowSelection="single"
+                  onRowClicked={(event: RowClickedEvent<Bom>) =>
+                    setSelectedBom(event.data ?? null)
+                  }
+                />
+              </div>
+            )}
           </div>
-          <div className="ag-theme-quartz h-[300px] w-full">
-            <AgGridReact<BomLine>
-              theme="legacy"
-              rowData={selectedBom?.lines ?? []}
-              columnDefs={lineColumnDefs}
-              defaultColDef={defaultColDef}
-              overlayNoRowsTemplate="선택된 BOM 상세가 없습니다."
-              animateRows
-            />
-          </div>
+
+          <aside className="min-w-0 rounded-lg border border-border bg-card p-4">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold">선택 BOM 상세</h2>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {displayedBom
+                  ? `${displayedBom.bomCode} ${displayedBom.bomName}`
+                  : "BOM 목록에서 행을 선택하세요."}
+              </p>
+            </div>
+
+            {displayedBom ? (
+              <BomLineList lines={displayedBom.lines} />
+            ) : (
+              <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground">
+                선택된 BOM이 없습니다.
+              </div>
+            )}
+          </aside>
         </section>
       </section>
 
@@ -509,7 +477,7 @@ export function BomManagementGrid() {
 }
 
 const inputClassName =
-  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
 
 function Field({
   label,
@@ -546,9 +514,66 @@ function Term({
   );
 }
 
+function BomLineList({ lines }: { lines: BomLine[] }) {
+  if (lines.length === 0) {
+    return (
+      <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground">
+        등록된 자재 라인이 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      {lines.map((line) => (
+        <div
+          key={line.id}
+          className="rounded-md border border-border bg-muted/20 px-3 py-2"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {line.materialItem.itemName}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {line.materialItem.itemCode}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-semibold text-foreground">
+                {formatQty(line.requiredQty)} {line.materialItem.unit}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                손실률 {formatPercent(line.lossRate)}
+              </p>
+            </div>
+          </div>
+          {line.description ? (
+            <p className="mt-2 truncate text-xs text-muted-foreground">
+              {line.description}
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function statusLabel(value: BomStatus | undefined) {
   if (value === "DRAFT") return "초안";
   if (value === "APPROVED") return "승인";
   if (value === "INACTIVE") return "비활성";
   return value ?? "";
+}
+
+function formatQty(value: unknown) {
+  return new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: 4,
+  }).format(Number(value ?? 0));
+}
+
+function formatPercent(value: unknown) {
+  return `${new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: 2,
+  }).format(Number(value ?? 0) * 100)}%`;
 }

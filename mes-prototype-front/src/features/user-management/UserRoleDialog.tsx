@@ -6,6 +6,7 @@ import { userApi } from "@/entities/user/api/userApi";
 import { roleApi } from "@/entities/user/api/roleApi";
 import { toast, toastError } from "@/shared/lib/toast";
 import type { UserListItem } from "@/entities/user/model/types";
+import { Select } from "@/shared/ui/Select";
 
 type Props = {
   open: boolean;
@@ -89,15 +90,15 @@ export function UserRoleDialog({ open, onClose }: Props) {
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <select
+                  <Select
                     value={pending ?? user.role.id}
-                    onChange={(e) => handleRoleChange(user, Number(e.target.value))}
-                    className="rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    onValueChange={(value) => handleRoleChange(user, Number(value))}
+                    className="h-8 w-auto min-w-28 px-2 py-1"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     onClick={() => handleSave(user)}
                     disabled={!isDirty || changeMutation.isPending}

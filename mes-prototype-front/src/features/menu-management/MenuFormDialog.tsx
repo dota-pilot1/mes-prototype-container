@@ -7,6 +7,7 @@ import { menuApi } from "@/entities/menu/api/menuApi";
 import type { MenuRecord } from "@/entities/menu/model/types";
 import { toast, toastError } from "@/shared/lib/toast";
 import { Switch } from "@/shared/ui/Switch";
+import { Select } from "@/shared/ui/Select";
 
 type FormValues = {
   code: string;
@@ -137,7 +138,7 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
           )}
 
           <Field label="부모 메뉴">
-            <select {...register("parentId")} className={inputCls}>
+            <Select {...register("parentId")}>
               <option value="">없음 (루트)</option>
               {parentOptions.map(({ menu, depth }) => (
                 <option key={menu.id} value={menu.id}>
@@ -146,7 +147,7 @@ export function MenuFormDialog({ target, menus, onClose }: Props) {
                   {menu.label} ({menu.code})
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field label="레이블 *">

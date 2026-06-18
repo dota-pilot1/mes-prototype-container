@@ -21,13 +21,13 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 type FormState = {
   productItemId: string;
-  quantity: number;
+  quantity: string;
 };
 
 export function MrpCalculateGrid() {
   const [form, setForm] = useState<FormState>({
     productItemId: "",
-    quantity: 100,
+    quantity: "100",
   });
   const [termsOpen, setTermsOpen] = useState(false);
 
@@ -160,7 +160,7 @@ export function MrpCalculateGrid() {
       toast.error("생산 품목을 선택하세요.");
       return;
     }
-    if (quantity <= 0) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       toast.error("생산수량은 0보다 커야 합니다.");
       return;
     }
@@ -169,19 +169,12 @@ export function MrpCalculateGrid() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background px-6 py-8">
-      <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">BOM/MRP</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-              MRP 계산
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              생산 품목과 수량을 입력하면 승인된 BOM 기준으로 필요 자재, 현재고,
-              안전재고, 부족수량을 계산합니다.
-            </p>
-          </div>
+    <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30 px-6 py-5">
+      <section className="mx-auto min-w-0 max-w-[1600px]">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            MRP 계산
+          </h1>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -203,12 +196,12 @@ export function MrpCalculateGrid() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="mt-6 rounded-lg border border-border bg-card p-4">
-          <div className="grid gap-3 lg:grid-cols-[1.4fr_180px_auto] lg:items-end">
+        <form onSubmit={submit} className="mt-4 rounded-lg border border-border bg-card p-4">
+          <div className="grid min-w-0 gap-3 lg:mx-auto lg:w-fit lg:grid-cols-[520px_160px_120px] lg:items-end">
             <Field label="생산 품목">
               <Select
                 value={form.productItemId}
-                onChange={(productItemId) => setForm((v) => ({ ...v, productItemId }))}
+                onValueChange={(productItemId) => setForm((v) => ({ ...v, productItemId }))}
                 options={[
                   {
                     value: "",
@@ -227,7 +220,7 @@ export function MrpCalculateGrid() {
                 step="1"
                 value={form.quantity}
                 onChange={(e) =>
-                  setForm((v) => ({ ...v, quantity: Number(e.target.value) }))
+                  setForm((v) => ({ ...v, quantity: e.target.value }))
                 }
                 className={inputClassName}
               />
@@ -235,23 +228,23 @@ export function MrpCalculateGrid() {
             <button
               type="submit"
               disabled={calculateMutation.isPending}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className="inline-flex h-9 w-[120px] items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
               <Calculator className="h-4 w-4" />
               계산
             </button>
           </div>
           {selectedBom ? (
-            <div className="mt-4 grid gap-3 rounded-md border border-border bg-background p-3 text-sm md:grid-cols-4">
+            <div className="mt-3 grid gap-3 rounded-md border border-border bg-muted/20 p-3 text-sm md:grid-cols-4">
               <SummaryItem label="BOM" value={`${selectedBom.bomCode} ${selectedBom.bomName}`} />
               <SummaryItem label="버전" value={selectedBom.version} />
-              <SummaryItem label="자재 수" value={`${selectedBom.lines.length}개`} />
+              <SummaryItem label="필요 자재 수" value={`${selectedBom.lines.length}개`} />
               <SummaryItem label="상태" value="승인" />
             </div>
           ) : null}
         </form>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-3">
+        <section className="mt-4 grid gap-3 md:grid-cols-3">
           <Metric title="계산 품목" value={result ? result.productItemName : "-"} />
           <Metric title="총 필요수량" value={result ? formatNumber(totalRequired) : "-"} />
           <Metric
@@ -261,7 +254,7 @@ export function MrpCalculateGrid() {
           />
         </section>
 
-        <section className="mt-5 rounded-lg border border-border bg-card p-4">
+        <section className="mt-4 min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4">
           <div className="mb-3">
             <h2 className="text-base font-semibold">MRP 계산 결과</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -270,7 +263,7 @@ export function MrpCalculateGrid() {
                 : "생산 품목과 수량을 입력한 뒤 계산하세요."}
             </p>
           </div>
-          <div className="ag-theme-quartz h-[520px] w-full">
+          <div className="ag-theme-quartz h-[clamp(340px,calc(100vh-30rem),520px)] min-w-0 w-full">
             <AgGridReact<MrpMaterial>
               theme="legacy"
               rowData={result?.materials ?? []}
@@ -321,7 +314,7 @@ export function MrpCalculateGrid() {
 }
 
 const inputClassName =
-  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring";
 
 function Field({
   label,

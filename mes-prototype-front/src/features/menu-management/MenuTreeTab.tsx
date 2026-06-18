@@ -18,6 +18,7 @@ import { menuApi, type UpdateMenuBody } from "@/entities/menu/api/menuApi";
 import type { MenuRecord, MenuItem } from "@/entities/menu/model/types";
 import { toast, toastError } from "@/shared/lib/toast";
 import { Switch } from "@/shared/ui/Switch";
+import { Select } from "@/shared/ui/Select";
 import { MenuFormDialog } from "./MenuFormDialog";
 
 function buildTree(flat: MenuRecord[]): MenuItem[] {
@@ -146,10 +147,9 @@ function DetailPanel({
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <div className="grid max-w-5xl gap-3">
         <Field label="부모 메뉴">
-          <select
+          <Select
             value={form.parentId ?? ""}
-            onChange={(e) => set("parentId", e.target.value ? Number(e.target.value) : null)}
-            className={inputCls}
+            onValueChange={(value) => set("parentId", value ? Number(value) : null)}
           >
             <option value="">없음 (루트)</option>
             {parentOptions.map(({ menu: option, depth }) => (
@@ -159,7 +159,7 @@ function DetailPanel({
                 {option.label} ({option.code})
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="레이블">

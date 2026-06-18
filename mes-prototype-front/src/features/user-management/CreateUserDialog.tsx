@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userApi } from "@/entities/user/api/userApi";
 import { roleApi } from "@/entities/user/api/roleApi";
 import { toast, toastError } from "@/shared/lib/toast";
+import { Select } from "@/shared/ui/Select";
 
 const schema = z.object({
   email: z.string().email("올바른 이메일 형식이 아닙니다."),
@@ -108,10 +109,9 @@ export function CreateUserDialog({ open, onClose }: Props) {
           </Field>
 
           <Field label="역할" error={errors.roleId?.message as string}>
-            <select
+            <Select
               {...register("roleId")}
               disabled={rolesLoading}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
             >
               <option value={0}>역할 선택</option>
               {roles?.map((r) => (
@@ -119,7 +119,7 @@ export function CreateUserDialog({ open, onClose }: Props) {
                   {r.name} ({r.code})
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <div className="flex justify-end gap-2 pt-2">

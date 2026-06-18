@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { roleApi } from "@/entities/user/api/roleApi";
 import { userApi } from "@/entities/user/api/userApi";
 import type { UserListItem } from "@/entities/user/model/types";
+import { Select } from "@/shared/ui/Select";
 
 type Props = {
   user: UserListItem | null;
@@ -54,11 +55,10 @@ export function RoleChangeDialog({ user, onClose }: Props) {
 
         <label className="block space-y-1 mb-4">
           <span className="text-sm font-medium">새 역할</span>
-          <select
+          <Select
             value={selectedRoleId ?? ""}
             disabled={rolesLoading || !roles}
-            onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+            onValueChange={(value) => setSelectedRoleId(Number(value))}
           >
             {rolesLoading && <option>로딩 중...</option>}
             {roles?.map((r) => (
@@ -66,7 +66,7 @@ export function RoleChangeDialog({ user, onClose }: Props) {
                 {r.name} ({r.code})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <div className="flex justify-end gap-2">

@@ -9,6 +9,7 @@ import { permissionApi } from "@/entities/permission/api/permissionApi";
 import { permissionCategoryApi } from "@/entities/permission-category/api/permissionCategoryApi";
 import { toast, toastError } from "@/shared/lib/toast";
 import type { Permission } from "@/entities/permission/model/types";
+import { Select } from "@/shared/ui/Select";
 
 const createSchema = z.object({
   code: z
@@ -141,15 +142,14 @@ export function PermissionFormDialog({ open, permission, defaultCategoryCode, on
           </Field>
 
           <Field label="카테고리" error={errors.categoryCode?.message as string}>
-            <select
+            <Select
               {...register("categoryCode")}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">카테고리 선택</option>
               {categories.map((c) => (
                 <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <div className="flex justify-end gap-2 pt-2">
